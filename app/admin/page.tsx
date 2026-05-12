@@ -229,7 +229,6 @@ export default function DocumentsPage() {
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleUpload(new FormData(Object.assign(new HTMLFormElement(), { 0: e.target })));
                     if (file) {
                       const form = new FormData();
                       form.append('file', file);
