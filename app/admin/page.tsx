@@ -63,12 +63,25 @@ export default function DocumentsPage() {
     setProgress({ phase: 'parsing', embedded: 0, total: 0 });
 
     const isJson = !(body instanceof FormData);
-    const res = await fetch('/api/admin/documents', {
-      method: 'POST',
-      ...(isJson
-        ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-        : { body }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+
+    let res: Response;
+    try {
+      res = await fetch('/api/admin/documents', {
+        method: 'POST',
+        signal: controller.signal,
+        ...(isJson
+          ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+          : { body }),
+      });
+    } catch {
+      clearTimeout(timeout);
+      setError('Parsing timed out. Try a smaller file, or split large documents into parts.');
+      setProgress(null);
+      return;
+    }
+    clearTimeout(timeout);
 
     if (!res.ok) {
       const data = await res.json();

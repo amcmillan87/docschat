@@ -6,24 +6,16 @@ export interface ParsedPage {
 }
 
 export async function parsePdf(buffer: Buffer): Promise<ParsedPage[]> {
-  const pages: ParsedPage[] = [];
-  let pageNum = 0;
+  // Bulk extraction is much faster than per-page callbacks for large PDFs
+  const data = await pdfParse(buffer);
 
-  await pdfParse(buffer, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pagerender: (pageData: any) => {
-      pageNum++;
-      const num = pageNum;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return pageData.getTextContent().then((content: { items: { str: string }[] }) => {
-        const text = content.items.map((item) => item.str).join(' ').trim();
-        if (text.length > 10) {
-          pages.push({ text, page: num });
-        }
-        return text;
-      });
-    },
-  });
+  if (!data.text?.trim()) return [];
 
-  return pages;
+  // Split on form-feed characters (\f) which PDFs use as page breaks,
+  // falling back to one big chunk if none are present
+  const rawPages = data.text.split(/\f/);
+
+  return rawPages
+    .map((text, i) => ({ text: text.trim(), page: i + 1 }))
+    .filter((p) => p.text.length > 10);
 }
